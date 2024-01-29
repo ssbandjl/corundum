@@ -1,0 +1,59 @@
+help doc, ip set, perf test, time test: https://docs.corundum.io/en/latest/gettingstarted.html
+docs/source/gettingstarted.rst
+
+glossary:
+https://docs.corundum.io/en/latest/glossary.html
+
+
+git repo: https://github.com/corundum/corundum
+GitHub repository: https://github.com/corundum/corundum
+Documentation: https://docs.corundum.io/
+GitHub wiki: https://github.com/corundum/corundum/wiki
+Google group: https://groups.google.com/d/forum/corundum-nic
+Zulip: https://corundum.zulipchat.com/
+
+
+
+
+build driver:
+cd /path/to/corundum/modules/mqnic
+
+
+user space tool:
+cd /path/to/corundum/utils
+
+
+
+driver flow:
+mqnic_init
+    platform_driver_register
+
+
+probe:
+mqnic_platform_probe
+    mqnic_devlink_alloc
+    platform_set_drvdata
+    mqnic_assign_id
+    mqnic_common_setdma
+        dma_set_mask_and_coherent
+    devm_reset_control_get
+    platform_get_resource
+    devm_ioremap_resource
+    mqnic_irq_init_platform
+        platform_irq_count -> get dev irq num
+        platform_get_irq
+        devm_request_irq mqnic_irq_handler
+            atomic_notifier_call_chain -> notify_chain
+    mqnic_common_probe
+        mqnic_enumerate_reg_block_list
+        mqnic_find_reg_block
+        ioread32 -> read mmio
+        ...
+        mqnic_clk_info_init
+        mqnic_stats_init
+        mqnic_board_init
+
+
+
+
+
