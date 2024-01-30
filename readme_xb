@@ -55,5 +55,94 @@ mqnic_platform_probe
 
 
 
+pci_request_regions
 
+
+
+send, tx:
+.ndo_start_xmit = mqnic_start_xmit
+skb_get_queue_mapping
+radix_tree_lookup
+netdev_txq_bql_enqueue_prefetchw
+mqnic_map_skb
+    dma_map_single
+skb_tx_timestamp
+dma_wmb()
+mqnic_tx_write_prod_ptr
+
+
+
+// enqueue
+ring->prod_ptr++;
+
+no xmit more or stop_qeuue:
+dma_wmb() -> 这两个函数保证了一块 DMA 和 CPU 共享的内存的访问指令顺序
+mqnic_tx_write_prod_ptr(ring)
+    iowrite32
+
+static const struct net_device_ops mqnic_netdev_ops = {
+	.ndo_open = mqnic_open,
+	.ndo_stop = mqnic_close,
+	.ndo_start_xmit = mqnic_start_xmit,
+	.ndo_get_stats64 = mqnic_get_stats64,
+	.ndo_validate_addr = eth_validate_addr,
+	.ndo_change_mtu = mqnic_change_mtu,
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 15, 0)
+	.ndo_eth_ioctl = mqnic_ioctl,
+#else
+	.ndo_do_ioctl = mqnic_ioctl,
+#endif
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 2, 0) && LINUX_VERSION_CODE < KERNEL_VERSION(6, 2, 0)
+	.ndo_get_devlink_port = mqnic_get_devlink_port,
+#endif
+};
+
+
+mqnic_open
+mqnic_start_port
+    netif_set_real_num_tx_queues -> 将发送队列数量设置到网络设备结构的成员
+    ...
+    for (k = 0; k < priv->rxq_count; k++) 
+        mqnic_create_cq
+        mqnic_open_cq
+            mqnic_res_alloc
+            dma_alloc_coherent
+            mqnic_eq_attach_cq
+            iowrite32
+            ...
+        netif_napi_add mqnic_poll_rx_cq
+        napi_enable
+        mqnic_arm_cq
+        mqnic_create_rx_ring
+        mqnic_open_rx_ring
+        down_write
+        radix_tree_insert
+        up_write
+    ... tx
+    for (k = 0; k < priv->txq_count; k++)
+        netif_tx_napi_add mqnic_poll_tx_cq
+    mqnic_interface_set_tx_mtu
+    mqnic_update_indir_table
+    mqnic_enable_tx_ring
+    mqnic_enable_rx_ring
+    mqnic_port_set_tx_ctrl
+    mqnic_activate_sched_block
+        mqnic_scheduler_enable
+    netif_tx_start_all_queues ->  //开启全部队列
+    netif_device_attach -> 设置__LINK_STATE_PRESENT标志，表明设备在系统中重新可用。并且如果之前设备处于运行状态，唤醒所有发送队列，而且，启动设备的发送超时检测定时器watchdog
+    mod_timer(&priv->link_status_timer, -> mqnic_link_status_timeout
+mqnic_poll_tx_cq
+    netdev_txq_bql_complete_prefetchw
+    dma_rmb
+    mqnic_free_tx_desc
+        prefetchw
+        dma_unmap_single
+        dma_unmap_addr_set
+        dma_unmap_page
+        napi_consume_skb
+    mqnic_cq_write_cons_ptr
+    ring_cons_ptr = READ_ONCE(tx_ring->cons_ptr)
+    WRITE_ONCE(tx_ring->cons_ptr, ring_cons_ptr)
+    netif_tx_wake_queue
+napi_complete
 
