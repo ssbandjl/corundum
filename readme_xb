@@ -145,4 +145,42 @@ mqnic_poll_tx_cq
     WRITE_ONCE(tx_ring->cons_ptr, ring_cons_ptr)
     netif_tx_wake_queue
 napi_complete
+kernel/kernel/notifier.c
+
+blocking_notifier_head其中包含了读写信号量成员rwsem，而信号量的特点就是运行在进程上下文，而且还可以睡眠。同理Blocking notifier chains的回调函数特征一样
+
+SRCU(Sleepable Read-Copy Update)
+
+notifier_call_chain
+
+
+
+probe:
+mqnic_common_probe
+
+
+
+同样内核也提供了四个不同类型的通知函数
+atomic_notifier_call_chain
+
+
+
+tx:
+dma_map_single
+
+
+mqnic_start_xmit
+
+
+.ndo_start_xmit = mqnic_start_xmit
+
+ring->prod_ptr++;
+
+dma_wmb
+smp_rmb
+cons_ptr = READ_ONCE(ring->cons_ptr)
+
+
+
+
 
